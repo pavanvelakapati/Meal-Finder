@@ -1,3 +1,4 @@
+//API link fetching 
 const API_BASE = 'https://www.themealdb.com/api/json/v1/1';
 const CATEGORIES_API = `${API_BASE}/categories.php`;
 const SEARCH_API = `${API_BASE}/search.php?s=`;
@@ -16,6 +17,7 @@ const overlay = document.getElementById('overlay');
 const searchInput = document.getElementById('searchInput');
 const searchButton = document.getElementById('searchButton');
 const searchResults = document.getElementById('searchResults');
+const noResultsMessage = document.getElementById('noResultsMessage');
 const categoriesSection = document.getElementById('categoriesSection');
 const recipesGrid = document.getElementById('recipesGrid');
 const categoriesGrid = document.getElementById('categoriesGrid');
@@ -28,13 +30,14 @@ const heroSection = document.getElementById('heroSection');
 const breadcrumbNav = document.getElementById('breadcrumbNav');
 const breadcrumbText = document.getElementById('breadcrumbText');
 const mealDetailsSection = document.getElementById('mealDetailsSection');
+const tagsContainer = document.getElementById('mealTagsContainer');
 
 // State
 let isMenuOpen = false;
 let currentSearchResults = [];
 let selectedCategory = '';
 let currentCategoryData = null;
-let currentView = 'home'; // 'home', 'search', 'category', 'details'
+let currentView = 'home'; 
 
 // API Functions
 async function fetchCategories() {
@@ -94,6 +97,7 @@ async function fetchMealsByCategory(category) {
     }
 }
 
+
 async function fetchMealDetails(mealId) {
     try {
         const response = await fetch(MEAL_DETAILS_API + mealId);
@@ -115,8 +119,12 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupEventListeners() {
     menuToggle.addEventListener('click', toggleMenu);
     overlay.addEventListener('click', closeMenu);
-    searchInput.addEventListener('input', handleSearch);
-    searchButton.addEventListener('click', () => handleSearch({ target: { value: searchInput.value } }));
+    searchButton.addEventListener('click', handleSearch);
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    });
     
     // Close menu on escape key
     document.addEventListener('keydown', function(e) {
@@ -137,8 +145,6 @@ function goHome() {
 }
 
 function updateViewDisplay() {
-    // Hide all sections first
-    heroSection.style.display = 'none';
     searchResults.style.display = 'none';
     categoriesSection.style.display = 'none';
     categoryDescription.style.display = 'none';
@@ -152,23 +158,26 @@ function updateViewDisplay() {
             break;
         case 'search':
             searchResults.style.display = 'block';
+            categoriesSection.style.display = 'block';
             breadcrumbNav.style.display = 'flex';
             breadcrumbText.textContent = 'SEARCH RESULTS';
             break;
         case 'category':
             searchResults.style.display = 'block';
-            categoryDescription.style.display = 'block';
             breadcrumbNav.style.display = 'flex';
             breadcrumbText.textContent = selectedCategory.toUpperCase();
+            categoryDescription.style.display = 'block';
             break;
         case 'details':
             mealDetailsSection.style.display = 'block';
             breadcrumbNav.style.display = 'flex';
+            categoriesSection.style.display = 'block';
             break;
     }
 }
 
 // Menu Functions
+
 function toggleMenu() {
     isMenuOpen = !isMenuOpen;
     updateMenuState();
@@ -194,25 +203,47 @@ function updateMenuState() {
 }
 
 // Search Functions
-async function handleSearch(e) {
-    const searchTerm = e.target.value.trim();
+
+async function handleSearch() {
+    const searchTerm = searchInput.value.trim();
     
     if (searchTerm) {
-        resultsTitle.textContent = 'SEARCHING...';
         currentView = 'search';
         updateViewDisplay();
         
-        const searchedMeals = await searchMeals(searchTerm);
+        resultsTitle.style.display = 'block';
+        resultsTitle.textContent = 'SEARCHING...';
+        recipesGrid.style.display = 'grid'; 
+        noResultsMessage.style.display = 'none'; 
+        
+        const matchingCategory = categories.find(
+            category => category.name.toLowerCase() === searchTerm.toLowerCase()
+        );
+        
+        let searchedMeals = [];
+
+        if (matchingCategory) {
+            selectedCategory = matchingCategory.id;
+            currentCategoryData = matchingCategory;
+            resultsTitle.textContent = `${matchingCategory.name.toUpperCase()} MEALS`;
+            
+            
+            searchedMeals = await fetchMealsByCategory(matchingCategory.id);
+        } else {
+            
+            selectedCategory = '';
+            currentCategoryData = null;
+            resultsTitle.textContent = 'SEARCH RESULTS';
+            searchedMeals = await searchMeals(searchTerm);
+        }
+        
         currentSearchResults = searchedMeals;
-        selectedCategory = '';
-        currentCategoryData = null;
-        resultsTitle.textContent = 'SEARCH RESULTS';
         renderRecipes();
+        
     } else if (currentView === 'search') {
         goHome();
     }
 }
-
 async function handleCategorySelect(categoryId) {
     selectedCategory = categoryId;
     currentCategoryData = categories.find(cat => cat.id === categoryId);
@@ -222,6 +253,7 @@ async function handleCategorySelect(categoryId) {
     updateViewDisplay();
     
     // Show category description
+
     if (currentCategoryData) {
         categoryTitle.textContent = currentCategoryData.name;
         categoryDescriptionText.textContent = currentCategoryData.description;
@@ -235,6 +267,7 @@ async function handleCategorySelect(categoryId) {
 }
 
 // Meal Details Functions
+
 async function showMealDetails(mealId) {
     const meal = await fetchMealDetails(mealId);
     if (meal) {
@@ -242,8 +275,6 @@ async function showMealDetails(mealId) {
         currentView = 'details';
         breadcrumbText.textContent = meal.strMeal.toUpperCase();
         updateViewDisplay();
-        
-        // Scroll to top of meal details
         mealDetailsSection.scrollIntoView({ behavior: 'smooth' });
     }
 }
@@ -264,13 +295,29 @@ function displayMealDetails(meal) {
     }
     
     // Set tags
-    document.getElementById('mealTags').textContent = meal.strTags || 'N/A';
+    const tagsContainer = document.getElementById('mealTagsContainer');
+    tagsContainer.innerHTML = ''; 
+    if (meal.strTags) {
+    const tags = meal.strTags.split(','); 
+
+    tags.forEach(tagText => {
+        if (tagText.trim()) { 
+            const tagElement = document.createElement('span');
+            tagElement.className = 'meal-tag-box'; 
+            tagElement.textContent = tagText.trim();
+            tagsContainer.appendChild(tagElement);
+        }
+    });
+} else {
+    
+    tagsContainer.textContent = 'N/A';
+}
     
     // Set ingredients
     const ingredientsList = document.getElementById('ingredientsList');
     ingredientsList.innerHTML = '';
     
-    let ingredientCount = 1; // Start a counter for numbering
+    let ingredientCount = 1; 
     for (let i = 1; i <= 20; i++) {
         const ingredient = meal[`strIngredient${i}`];
         if (ingredient && ingredient.trim()) {
@@ -294,7 +341,6 @@ function displayMealDetails(meal) {
             ingredientCount++;
         }
     }
-
     
     // Set measures
     const measuresList = document.getElementById('measuresList');
@@ -313,12 +359,13 @@ function displayMealDetails(meal) {
             measuresList.appendChild(measureItem);
         }
     }
+    
     // Set instructions
     const instructionsList = document.getElementById('instructionsList');
     instructionsList.innerHTML = '';
     
     if (meal.strInstructions) {
-        const instructions = meal.strInstructions.split(/[\.\n]/).filter(instruction => instruction.trim().length > 10);
+        const instructions = meal.strInstructions.split(/[\.\n]/).filter(instruction => instruction.trim().length > 50);
         instructions.forEach((instruction, index) => {
             if (instruction.trim()) {
                 const instructionStep = document.createElement('div');
@@ -332,6 +379,7 @@ function displayMealDetails(meal) {
         });
     }
 }
+
 // Render Functions
 function renderCategories() {
     categoriesGrid.innerHTML = '';
@@ -343,20 +391,35 @@ function renderCategories() {
 
 function renderMenuCategories() {
     menuCategories.innerHTML = '';
-    categories.forEach(category => {
+    categories.forEach((category, index) => {
         const button = document.createElement('button');
         button.textContent = category.name.charAt(0).toUpperCase() + category.name.slice(1).toLowerCase();
         button.addEventListener('click', () => handleCategorySelect(category.id));
         menuCategories.appendChild(button);
+
+       
+        if (index < categories.length - 1) {
+            const hr = document.createElement('hr');
+            menuCategories.appendChild(hr);
+         }
     });
 }
 
 function renderRecipes() {
     recipesGrid.innerHTML = '';
-    currentSearchResults.forEach(recipe => {
-        const recipeCard = createRecipeCard(recipe);
-        recipesGrid.appendChild(recipeCard);
-    });
+    if (currentSearchResults.length > 0) {
+        resultsTitle.style.display = 'block';
+        recipesGrid.style.display = 'grid';
+        noResultsMessage.style.display = 'none';
+        currentSearchResults.forEach(recipe => {
+            const recipeCard = createRecipeCard(recipe);
+            recipesGrid.appendChild(recipeCard);
+        });
+    } else {
+        resultsTitle.style.display = 'none';
+        recipesGrid.style.display = 'none';
+        noResultsMessage.style.display = 'block';
+    }
 }
 
 function createCategoryCard(category) {
@@ -391,5 +454,4 @@ function createRecipeCard(recipe) {
     `;
     
     return card;
-
 }
