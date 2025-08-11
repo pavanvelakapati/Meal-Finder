@@ -313,7 +313,6 @@ function displayMealDetails(meal) {
             measuresList.appendChild(measureItem);
         }
     }
-    
     // Set instructions
     const instructionsList = document.getElementById('instructionsList');
     instructionsList.innerHTML = '';
@@ -333,7 +332,6 @@ function displayMealDetails(meal) {
         });
     }
 }
-
 // Render Functions
 function renderCategories() {
     categoriesGrid.innerHTML = '';
@@ -393,4 +391,5 @@ function createRecipeCard(recipe) {
     `;
     
     return card;
+
 }
