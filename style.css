@@ -23,7 +23,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 64rem;
+  gap: 78rem;
   margin-left: 10px;
 }
 
@@ -317,6 +317,9 @@ body {
   margin-left: 2.5rem;
   margin-bottom: 1rem;
   color: #d97706;
+}
+hr{
+  background-color:#d97706;
 }
 
 .meal-meta {
