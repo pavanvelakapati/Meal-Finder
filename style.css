@@ -556,7 +556,7 @@ hr{
   text-transform: uppercase;
 }
 
-/* Responsive */
+/* Responsive  web page starts */
 @media (max-width: 768px) {
   .side-menu {
     width: 280px;
@@ -582,3 +582,4 @@ hr{
     grid-template-columns: 1fr;
   }
 }
+
